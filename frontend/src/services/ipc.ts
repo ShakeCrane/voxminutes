@@ -543,6 +543,31 @@ export function onAudioLevels(callback: (update: AudioLevelUpdate) => void): Pro
   return listen<AudioLevelUpdate>('audio-levels', (event) => callback(event.payload))
 }
 
+// ── User-defined local OpenAI-compatible model servers ─────────────────────────
+export interface CustomLocalProfile {
+  id: string
+  name: string
+  task: 'asr' | 'translation' | 'summary'
+  endpoint: string
+  model: string
+  timeoutSecs: number
+}
+export async function customLocalList(): Promise<CustomLocalProfile[]> {
+  return invoke<CustomLocalProfile[]>('custom_local_list')
+}
+export async function customLocalUpsert(profile: CustomLocalProfile): Promise<CustomLocalProfile> {
+  return invoke<CustomLocalProfile>('custom_local_upsert', { profile })
+}
+export async function customLocalDelete(id: string): Promise<void> {
+  return invoke('custom_local_delete', { id })
+}
+export async function customLocalSelect(id: string): Promise<void> {
+  return invoke('custom_local_select', { id })
+}
+export async function customLocalTest(profile: CustomLocalProfile): Promise<string> {
+  return invoke<string>('custom_local_test', { profile })
+}
+
 // ── 会议总结 ──────────────────────────────────────────────────────────────────
 
 export async function summaryGetConfig(): Promise<SummaryApiConfig | null> {
@@ -579,7 +604,11 @@ export async function summaryGenerate(
 
 /** 已注册的本地总结模型列表（按后端优先级排序）。 */
 export async function summaryLocalModels(): Promise<SummaryLocalModelInfo[]> {
-  return invoke<SummaryLocalModelInfo[]>('summary_local_models')
+  const builtin = await invoke<SummaryLocalModelInfo[]>('summary_local_models')
+  const custom = await customLocalList()
+  return [...builtin, ...custom.filter((p) => p.task === 'summary').map((p) => ({
+    id: `custom:${p.id}`, displayName: `Custom: ${p.name}`, installed: true,
+  }))]
 }
 
 /** 通过本地模型生成总结；modelId 省略时后端自动选第一个已安装的总结模型。 */
