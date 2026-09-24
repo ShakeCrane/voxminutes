@@ -22,7 +22,7 @@ export const HYMT2_TARGET_LANGS = [
 
 /** 按引擎返回可选目标语言代码列表（全量，不排除 home） */
 export function getTranslateTargetLangs(engine: TranslationEngine): string[] {
-  return engine === 'hymt2' ? [...HYMT2_TARGET_LANGS] : [...OPUS_TARGET_LANGS]
+  return engine !== 'opus' ? [...HYMT2_TARGET_LANGS] : [...OPUS_TARGET_LANGS]
 }
 
 /** home 对应的默认目标语言（仅用于初始值/非法值回退）：home 非英语 → 英语；home 是英语 → 中文 */
