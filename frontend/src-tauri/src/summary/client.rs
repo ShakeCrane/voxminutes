@@ -48,13 +48,13 @@ fn base_url(config: &SummaryApiConfig) -> String {
 
 fn http_client(total_timeout: Option<std::time::Duration>, config: &SummaryApiConfig) -> Result<reqwest::Client, String> {
     let mut builder =
-        reqwest::Client::builder().connect_timeout(std::time::Duration::from_secs(15))
-            .redirect(reqwest::redirect::Policy::none());
+        reqwest::Client::builder().connect_timeout(std::time::Duration::from_secs(15));
     if let Some(t) = total_timeout {
         builder = builder.timeout(t);
     }
     if crate::custom_local::validate_endpoint(&config.endpoint).is_ok() {
-        builder = builder.no_proxy();
+        // Keep local audio/text on loopback; do not change existing cloud API redirect behavior.
+        builder = builder.no_proxy().redirect(reqwest::redirect::Policy::none());
     }
     builder.build().map_err(|e| e.to_string())
 }
