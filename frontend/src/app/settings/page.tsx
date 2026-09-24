@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Rocket } from 'lucide-react'
 import { ModelDownloadCard } from '@/components/settings/ModelDownloadCard'
+import { CustomLocalModelsSection } from '@/components/settings/CustomLocalModelsSection'
 import { AudioSection } from '@/components/settings/AudioSection'
 import { ExportSection } from '@/components/settings/ExportSection'
 import { SummarySection } from '@/components/settings/SummarySection'
@@ -68,7 +69,7 @@ export default function SettingsPage() {
       {/* 内容区（可滚动，最大宽度 860px） */}
       <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
         <div className="flex flex-col gap-6 max-w-[860px] pt-4 pb-6">
-          {tab === 'models' && <ModelDownloadCard />}
+          {tab === 'models' && <><ModelDownloadCard /><CustomLocalModelsSection /></>}
           {tab === 'audio' && (
             <>
               <AudioSection />
