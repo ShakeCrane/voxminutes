@@ -48,7 +48,8 @@ fn base_url(config: &SummaryApiConfig) -> String {
 
 fn http_client(total_timeout: Option<std::time::Duration>) -> Result<reqwest::Client, String> {
     let mut builder =
-        reqwest::Client::builder().connect_timeout(std::time::Duration::from_secs(15));
+        reqwest::Client::builder().connect_timeout(std::time::Duration::from_secs(15))
+            .redirect(reqwest::redirect::Policy::none());
     if let Some(t) = total_timeout {
         builder = builder.timeout(t);
     }
