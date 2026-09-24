@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { SettingsSection } from './SettingsSection'
+import { useAppStore } from '@/state'
 import {
   apiGetTranscriptConfig, customLocalDelete, customLocalList,
   customLocalSelect, customLocalTest, customLocalUpsert, getTranslationEngine,
@@ -57,6 +58,8 @@ export function CustomLocalModelsSection() {
   const select = async (item: CustomLocalProfile) => {
     try {
       await customLocalSelect(item.id)
+      if (item.task === 'asr') useAppStore.getState().setSelectedModel('custom:' + item.id)
+      if (item.task === 'translation') useAppStore.getState().setTranslationEngine(('custom:' + item.id) as `custom:${string}`)
       await refresh()
       toast.success('已启用；下次转写/翻译将使用此模型')
     } catch (e) { toast.error(String(e)) }
