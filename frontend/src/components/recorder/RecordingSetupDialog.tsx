@@ -261,6 +261,7 @@ export function RecordingSetupDialog({ open, onOpenChange, onConfirm }: Recordin
                   >
                     <option value="opus">{t.recEngineOpus}</option>
                     <option value="hymt2">{t.recEngineHymt2}</option>
+                {translationEngine.startsWith('custom:') && <option value={translationEngine}>Custom local model</option>}
                   </select>
                 </label>
               )}
