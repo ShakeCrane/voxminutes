@@ -47,6 +47,7 @@ pub mod api;
 pub mod audio;
 mod sherpa_onnx_engine;
 pub mod config;
+mod custom_local;
 pub mod database;
 mod llama_sidecar;
 pub mod model_download;
@@ -621,7 +622,7 @@ pub fn run() {
                     (engine, lang, home)
                 });
                 if let Some(engine) =
-                    saved_engine.filter(|e| matches!(e.as_str(), "opus" | "hymt2"))
+                    saved_engine.filter(|e| matches!(e.as_str(), "opus" | "hymt2") || e.starts_with("custom:"))
                 {
                     if let Ok(mut guard) = translation::TRANSLATION_ENGINE.lock() {
                         *guard = engine;
@@ -687,6 +688,11 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            custom_local::custom_local_list,
+            custom_local::custom_local_upsert,
+            custom_local::custom_local_delete,
+            custom_local::custom_local_test,
+            custom_local::custom_local_select,
             focus_main_window,
             start_window_drag,
             start_recording,

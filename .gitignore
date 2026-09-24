@@ -44,8 +44,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# Database
-database/
+# Database — anchor to the repo root: an unanchored "database/" also swallowed
+# frontend/src-tauri/src/database/, which is application source (same trap as /models/ above).
+/database/
 *.db
 *.db-journal
 *.db-shm
@@ -53,6 +54,11 @@ database/
 
 # Audio
 *.wav
+# ...but the bundled ASR example clip is a declared Tauri resource
+# (tauri.conf.json "example_audio.wav") and is read by the X-ASR benchmark test
+# (sherpa_onnx_engine/engine.rs via CARGO_MANIFEST_DIR/../../example_audio.wav).
+!frontend/src-tauri/example_audio.wav
+!/example_audio.wav
 *.mp3
 *.m4a
 *.flac

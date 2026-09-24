@@ -76,7 +76,7 @@ export function RecordingSetupDialog({ open, onOpenChange, onConfirm }: Recordin
   const modelLabel = (name: string): string => {
     if (name === 'x-asr-480ms') return t.recModelXAsr
     if (name === 'sense-voice') return t.recModelSenseVoice
-    return name
+    return models.find((m) => m.name === name)?.description || name
   }
 
   // 目标语言选项按引擎动态生成（全量，不排除 home）；zh/en 沿用录音面板既有文案，其余用语言名
@@ -173,7 +173,7 @@ export function RecordingSetupDialog({ open, onOpenChange, onConfirm }: Recordin
                     )}
                     <div className="text-sm font-semibold">{modelLabel(m.name)}</div>
                     <div className="mt-0.5 text-[11px] text-muted-foreground">
-                      {m.name === 'x-asr-480ms' ? t.recXAsrDesc : t.recSenseVoiceDesc}
+                      {m.name.startsWith('custom:') ? 'User-run local inference server' : m.name === 'x-asr-480ms' ? t.recXAsrDesc : t.recSenseVoiceDesc}
                       {available ? '' : ` · ${t.recNotDownloaded}`}
                     </div>
                   </button>
@@ -261,6 +261,7 @@ export function RecordingSetupDialog({ open, onOpenChange, onConfirm }: Recordin
                   >
                     <option value="opus">{t.recEngineOpus}</option>
                     <option value="hymt2">{t.recEngineHymt2}</option>
+                {translationEngine.startsWith('custom:') && <option value={translationEngine}>Custom local model</option>}
                   </select>
                 </label>
               )}

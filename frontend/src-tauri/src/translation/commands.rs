@@ -30,6 +30,22 @@ pub async fn translate_text(
         return Ok(String::new());
     }
 
+    let selected_engine = current_engine();
+    if let Some(id) = selected_engine.strip_prefix("custom:") {
+        let profile = crate::custom_local::profile(&app, id, "translation").await?;
+        let explicit = llm::parse_direction(&direction);
+        let src = explicit.map(|(s, _)| s.to_string())
+            .unwrap_or_else(|| super::detect_source_lang(&text).to_string());
+        let tgt = target.filter(|t| t != "auto" && !t.trim().is_empty())
+            .or_else(|| explicit.map(|(_, t)| t.to_string()))
+            .unwrap_or_else(|| {
+                let setting = super::target_lang();
+                if setting == "auto" { super::default_target_for_home(&super::home_lang()) } else { setting }
+            });
+        if src == tgt { return Ok(text); }
+        return crate::custom_local::translate(&profile, &text, &src, &tgt).await;
+    }
+
     if current_engine() == "hymt2" {
         // Hy-MT2 LLM 引擎：校验模型已安装，走 llama-helper sidecar
         if !crate::model_download::hy_mt2_installed() {
@@ -113,7 +129,7 @@ pub async fn set_translation_engine(
     state: tauri::State<'_, AppState>,
     engine: String,
 ) -> Result<(), String> {
-    if !matches!(engine.as_str(), "opus" | "hymt2") {
+    if !matches!(engine.as_str(), "opus" | "hymt2") && !engine.starts_with("custom:") {
         return Err(format!("不支持的翻译引擎: {}", engine));
     }
     log::info!("Translation engine: {}", engine);
@@ -138,7 +154,7 @@ pub async fn set_translation_engine(
                         log::warn!("Hy-MT2 翻译引擎预热失败: {}", e);
                     }
                 }
-            } else {
+            } else if engine == "opus" {
                 for direction in ["zh-en", "en-zh"] {
                     if is_model_installed(direction) {
                         if let Err(e) = get_engine(direction) {

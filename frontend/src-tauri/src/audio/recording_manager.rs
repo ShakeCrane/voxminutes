@@ -54,6 +54,11 @@ impl RecordingManager {
         }
     }
 
+    /// Apply persisted storage preferences before this session begins.
+    pub fn set_save_folder(&mut self, folder: std::path::PathBuf) {
+        self.recording_saver.set_base_folder(folder);
+    }
+
     /// Set whether this session should follow system default input/output devices.
     pub fn set_follow_flags(&mut self, follow_mic: bool, follow_system: bool) {
         self.follow_mic = follow_mic;
@@ -88,7 +93,7 @@ impl RecordingManager {
         // CRITICAL FIX: Create recording sender for pre-mixed audio from pipeline
         // Pipeline will mix mic + system audio professionally and send to this channel
         // Pass auto_save to control whether audio checkpoints are created
-        let recording_sender = self.recording_saver.start_accumulation(auto_save);
+        let recording_sender = self.recording_saver.start_accumulation(auto_save)?;
 
         // Start recording state first
         self.state.start_recording()?;

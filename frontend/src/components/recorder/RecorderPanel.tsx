@@ -8,6 +8,7 @@ import { useRecorder, useRecordingTimer, DEFAULT_ASR_MODEL } from '@/hooks/useRe
 import { useAudioLevel } from '@/hooks/useAudioLevel'
 import {
   sherpaOnnxGetModels,
+  customLocalList,
   getDefaultAudioDevices,
   apiGetTranscriptConfig,
   setMicMute as ipcSetMicMute,
@@ -43,17 +44,21 @@ function useRecorderInit() {
   const setSelectedModel = useAppStore((s) => s.setSelectedModel)
 
   useEffect(() => {
-    sherpaOnnxGetModels()
-      .then((list) => {
+    Promise.all([sherpaOnnxGetModels().catch(() => [] as ModelInfo[]), customLocalList().catch(() => [])])
+      .then(async ([builtin, custom]) => {
+        const list: ModelInfo[] = [
+          ...builtin,
+          ...custom.filter((p) => p.task === 'asr').map((p) => ({
+            name: 'custom:' + p.id, status: 'Available',
+            description: p.name + ' · ' + p.model + ' (local server)',
+          })),
+        ]
         setModels(list)
-        return list
-      })
-      .catch(() => [] as ModelInfo[])
-      .then(async (list) => {
         try {
           const cfg = await apiGetTranscriptConfig()
-          if (cfg?.model && list.some((m) => m.name === cfg.model)) {
-            setSelectedModel(cfg.model)
+          const active = cfg?.provider === 'custom-local' ? 'custom:' + cfg.model : cfg?.model
+          if (active && list.some((m) => m.name === active)) {
+            setSelectedModel(active)
             return
           }
         } catch {}
@@ -231,6 +236,7 @@ export function RecorderControls() {
               >
                 <option value="opus">{t.recEngineOpus}</option>
                 <option value="hymt2">{t.recEngineHymt2}</option>
+                {translationEngine.startsWith('custom:') && <option value={translationEngine}>Custom local model</option>}
               </select>
             </>
           )}

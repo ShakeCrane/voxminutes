@@ -179,12 +179,17 @@ export function useRecorder() {
         if (options.language) {
           await setLanguagePreference(options.language).catch(() => {})
         }
-        await sherpaOnnxLoadModel(modelToUse)
-        await apiSaveTranscriptConfig(
-          modelToUse.startsWith('x-asr-') ? 'x-asr' : 'sherpaonnx',
-          modelToUse,
-          null
-        )
+        if (modelToUse.startsWith('custom:')) {
+          // The server owns loading and hardware selection; do not load it as a sherpa model.
+          await apiSaveTranscriptConfig('custom-local', modelToUse.slice(7), null)
+        } else {
+          await sherpaOnnxLoadModel(modelToUse)
+          await apiSaveTranscriptConfig(
+            modelToUse.startsWith('x-asr-') ? 'x-asr' : 'sherpaonnx',
+            modelToUse,
+            null
+          )
+        }
         setAsrModelStatus('loaded')
         // 回写实际使用的模型名，保持左侧栏信息框显示与当前引擎一致
         useAppStore.getState().setSelectedModel(modelToUse)

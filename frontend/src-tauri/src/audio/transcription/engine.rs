@@ -179,6 +179,16 @@ pub async fn validate_transcription_model_ready<R: Runtime>(app: &AppHandle<R>) 
         }
     };
 
+    if config.provider == "custom-local" {
+        let profile = crate::custom_local::profile(app, &config.model, "asr").await?;
+        crate::custom_local::validate_profile(&profile)?;
+        // Check connectivity before accepting a new recording; do not drop speech chunks
+        // merely because a configured local server has not been started.
+        crate::custom_local::custom_local_test(profile).await
+            .map_err(|e| format!("Custom local ASR is unavailable: {e}"))?;
+        return Ok(());
+    }
+
     let is_xasr = config.model.starts_with("x-asr-");
     let is_remote = config.model == "qwen3-asr-remote"
         || config.model.starts_with("qwen3-asr-remote")
@@ -272,6 +282,14 @@ pub async fn get_or_init_transcription_engine<R: Runtime>(
             }
         }
     };
+
+    if config.provider == "custom-local" {
+        let profile = crate::custom_local::profile(app, &config.model, "asr").await?;
+        crate::custom_local::validate_profile(&profile)?;
+        return Ok(TranscriptionEngine::Provider(Arc::new(
+            super::custom_local_provider::CustomLocalAsrProvider::new(profile)
+        )));
+    }
 
     let is_xasr = config.model.starts_with("x-asr-");
     let is_remote = config.model == "qwen3-asr-remote"

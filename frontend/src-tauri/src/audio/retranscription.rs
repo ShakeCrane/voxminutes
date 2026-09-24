@@ -699,7 +699,15 @@ async fn run_retranscription<R: Runtime>(
             &format!("加载识别引擎... ({} 个大段)", chunks_count),
             &estimator, Some(chunks_count), Some(0));
 
-        let transcription_provider = get_or_init_sherpa_onnx(model, provider).await?;
+        let transcription_provider: Arc<dyn crate::audio::transcription::provider::TranscriptionProvider> =
+            if provider.as_deref() == Some("custom-local") {
+                let id = model.as_deref().ok_or_else(|| anyhow!("Missing custom ASR profile ID"))?;
+                let profile = crate::custom_local::profile(&app, id, "asr").await
+                    .map_err(|e| anyhow!("{}", e))?;
+                Arc::new(crate::audio::transcription::custom_local_provider::CustomLocalAsrProvider::new(profile))
+            } else {
+                get_or_init_sherpa_onnx(model, provider).await?
+            };
 
         let total_speech_sec: f64 = chunks.iter().map(|c| c.samples.len() as f64 / 16000.0).sum();
         estimator.set_total_speech_sec(total_speech_sec);

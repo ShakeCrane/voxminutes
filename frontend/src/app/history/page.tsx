@@ -15,8 +15,9 @@ import {
   onRetranscriptionError,
   onRetranscriptionPartial,
   sherpaOnnxGetModels,
+  customLocalList,
 } from '@/services/ipc'
-import type { RecordingDetails, RecordingListItem, RetranscriptionPartial } from '@/types'
+import type { RecordingDetails, RecordingListItem, RetranscriptionPartial, ModelInfo } from '@/types'
 import { useAppStore } from '@/state'
 import { HistoryList } from '@/components/history/HistoryList'
 import { RecordingDetail, type ResultTab } from '@/components/history/RecordingDetail'
@@ -77,7 +78,14 @@ export default function HistoryPage() {
 
   useEffect(() => {
     refresh()
-    sherpaOnnxGetModels().then(setModels).catch(() => {})
+    Promise.all([sherpaOnnxGetModels().catch(() => [] as ModelInfo[]), customLocalList().catch(() => [])])
+      .then(([builtin, custom]) => setModels([
+        ...builtin,
+        ...custom.filter((p) => p.task === 'asr').map((p) => ({
+          name: 'custom:' + p.id, status: 'Available',
+          description: p.name + ' · ' + p.model,
+        })),
+      ])).catch(() => {})
     // 消费「刚保存的录音」id：录音停止后 useRecorder 会跳转过来并带上该 id
     const latest = useAppStore.getState().latestRecordingId
     if (latest) {
@@ -232,8 +240,9 @@ export default function HistoryPage() {
       await startRetranscription(
         details.id,
         details.folder_path,
-        retransModel,
-        retransModel.startsWith('x-asr-') ? 'x-asr' : 'sherpaonnx'
+        retransModel.startsWith('custom:') ? retransModel.slice(7) : retransModel,
+        retransModel.startsWith('custom:') ? 'custom-local'
+          : retransModel.startsWith('x-asr-') ? 'x-asr' : 'sherpaonnx'
       )
     } catch {
       setRetranscribing(false)
@@ -308,7 +317,7 @@ export default function HistoryPage() {
                   >
                     {retransModels.map((m) => (
                       <option key={m.name} value={m.name}>
-                        {m.name === 'sense-voice' ? t.histModelSenseVoice : m.name}
+                        {m.name.startsWith('custom:') ? (m.description || m.name) : m.name === 'sense-voice' ? t.histModelSenseVoice : m.name}
                       </option>
                     ))}
                   </select>
