@@ -179,6 +179,12 @@ pub async fn validate_transcription_model_ready<R: Runtime>(app: &AppHandle<R>) 
         }
     };
 
+    if config.provider == "custom-local" {
+        let profile = crate::custom_local::profile(app, &config.model, "asr").await?;
+        crate::custom_local::validate_profile(&profile)?;
+        return Ok(());
+    }
+
     let is_xasr = config.model.starts_with("x-asr-");
     let is_remote = config.model == "qwen3-asr-remote"
         || config.model.starts_with("qwen3-asr-remote")
@@ -272,6 +278,14 @@ pub async fn get_or_init_transcription_engine<R: Runtime>(
             }
         }
     };
+
+    if config.provider == "custom-local" {
+        let profile = crate::custom_local::profile(app, &config.model, "asr").await?;
+        crate::custom_local::validate_profile(&profile)?;
+        return Ok(TranscriptionEngine::Provider(Arc::new(
+            super::custom_local_provider::CustomLocalAsrProvider::new(profile)
+        )));
+    }
 
     let is_xasr = config.model.starts_with("x-asr-");
     let is_remote = config.model == "qwen3-asr-remote"
