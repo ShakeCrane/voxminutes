@@ -3,6 +3,7 @@
 // Transcription module: Provider abstraction, engine management, and worker pool.
 
 pub mod provider;
+pub mod custom_local_provider;
 pub mod sherpa_onnx_provider;
 pub mod remote_asr_provider;
 pub mod x_asr_provider;
