@@ -65,6 +65,7 @@ fn client(timeout: u64) -> Result<reqwest::Client, String> {
         .connect_timeout(std::time::Duration::from_secs(5))
         .timeout(std::time::Duration::from_secs(timeout))
         .redirect(reqwest::redirect::Policy::none())
+        .no_proxy()
         .build().map_err(|e| e.to_string())
 }
 async fn read_profiles(pool: &sqlx::SqlitePool) -> Result<Vec<LocalModelProfile>, String> {
