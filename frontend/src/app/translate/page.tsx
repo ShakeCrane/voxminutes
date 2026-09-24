@@ -224,6 +224,7 @@ export default function TranslatePage() {
         >
           <option value="opus">{t.trEngineOpus}</option>
           <option value="hymt2">{t.trEngineHymt2}</option>
+                {engine.startsWith('custom:') && <option value={engine}>Custom local model</option>}
         </select>
 
         <div className="flex-1" />
