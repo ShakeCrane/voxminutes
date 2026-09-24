@@ -384,3 +384,27 @@ pub async fn get_audio_backend_info() -> Result<Vec<BackendInfo>, String> {
     }
 }
 
+
+
+#[cfg(test)]
+mod storage_tests {
+    use super::*;
+    #[test]
+    fn partial_legacy_preferences_keep_defaults() {
+        let p: RecordingPreferences = serde_json::from_value(
+            serde_json::json!({"recordingsFolder": "/tmp/legacy-recordings"})
+        ).unwrap();
+        assert!(p.auto_save);
+        assert_eq!(p.file_format, "mp4");
+    }
+    #[test]
+    fn selected_destination_must_be_a_directory() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("new-recordings");
+        ensure_recordings_directory(&path).unwrap();
+        assert!(path.is_dir());
+        let file = tmp.path().join("file.txt");
+        std::fs::write(&file, b"test").unwrap();
+        assert!(ensure_recordings_directory(&file).is_err());
+    }
+}
