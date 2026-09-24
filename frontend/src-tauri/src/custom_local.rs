@@ -188,7 +188,7 @@ pub async fn transcribe(p: &LocalModelProfile, audio: &[f32], language: Option<S
         .mime_str("audio/wav").map_err(|e| e.to_string())?;
     let mut form = reqwest::multipart::Form::new()
         .part("file", file).text("model", p.model.clone());
-    if let Some(lang) = language.filter(|l| !l.is_empty()) { form = form.text("language", lang); }
+    if let Some(lang) = language.filter(|l| !l.trim().is_empty() && l != "auto") { form = form.text("language", lang); }
     let r = client(p.timeout_secs)?.post(url).multipart(form).send().await.map_err(|e| e.to_string())?;
     let status = r.status();
     let bytes = r.bytes().await.map_err(|e| e.to_string())?;
