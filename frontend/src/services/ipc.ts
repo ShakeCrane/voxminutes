@@ -605,7 +605,7 @@ export async function summaryGenerate(
 /** 已注册的本地总结模型列表（按后端优先级排序）。 */
 export async function summaryLocalModels(): Promise<SummaryLocalModelInfo[]> {
   const builtin = await invoke<SummaryLocalModelInfo[]>('summary_local_models')
-  const custom = await customLocalList()
+  const custom = await customLocalList().catch(() => [] as CustomLocalProfile[])
   return [...builtin, ...custom.filter((p) => p.task === 'summary').map((p) => ({
     id: `custom:${p.id}`, displayName: `Custom: ${p.name}`, installed: true,
   }))]
