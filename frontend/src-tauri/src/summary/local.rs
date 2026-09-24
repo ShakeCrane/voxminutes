@@ -170,6 +170,18 @@ pub async fn summary_local_generate<R: Runtime>(
     max_tokens: Option<u32>,
     model_id: Option<String>,
 ) -> Result<(), String> {
+    if let Some(id) = model_id.as_deref().and_then(|m| m.strip_prefix("custom:")) {
+        let profile = crate::custom_local::profile(&app, id, "summary").await?;
+        let config = super::SummaryApiConfig {
+            protocol: "openai".to_string(),
+            endpoint: crate::custom_local::validate_endpoint(&profile.endpoint)?,
+            api_key: String::new(),
+            model: profile.model,
+        };
+        return super::client::summary_generate(
+            app, request_id, config, prompt, max_tokens, None
+        ).await;
+    }
     let flag = Arc::new(AtomicBool::new(false));
     {
         let mut map = CANCEL.lock().map_err(|e| e.to_string())?;
