@@ -182,6 +182,10 @@ pub async fn validate_transcription_model_ready<R: Runtime>(app: &AppHandle<R>) 
     if config.provider == "custom-local" {
         let profile = crate::custom_local::profile(app, &config.model, "asr").await?;
         crate::custom_local::validate_profile(&profile)?;
+        // Check connectivity before accepting a new recording; do not drop speech chunks
+        // merely because a configured local server has not been started.
+        crate::custom_local::custom_local_test(profile).await
+            .map_err(|e| format!("Custom local ASR is unavailable: {e}"))?;
         return Ok(());
     }
 
