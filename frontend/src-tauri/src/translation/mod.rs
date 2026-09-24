@@ -230,7 +230,7 @@ pub struct TranslateUpdate {
 /// 返回 (direction, source_lang, effective_target)；目标语言不被当前引擎
 /// 支持时也返回 None（跳过）。
 fn resolve_direction(text: &str, target: &str) -> Option<(String, String, String)> {
-    if current_engine() == "hymt2" {
+    if current_engine() == "hymt2" || current_engine().starts_with("custom:") {
         // Hy-MT2 LLM 引擎：13 种语言互译，源语言按文本特征检测
         let source_lang = detect_source_lang(text);
         // 兼容存量 "auto"：按 home 的默认目标解析
@@ -356,6 +356,29 @@ pub async fn process_pending_translations<R: Runtime>(app: AppHandle<R>) {
         let original_for_stream = task.text.clone();
         let source_lang_stream = source_lang.clone();
         let target_lang_stream = effective_target.clone();
+        if let Some(id) = engine_kind.strip_prefix("custom:") {
+            let result = match crate::custom_local::profile(&app, id, "translation").await {
+                Ok(profile) => crate::custom_local::translate(
+                    &profile, &text, &source_lang, &effective_target,
+                ).await,
+                Err(err) => Err(err),
+            };
+            match result {
+                Ok(translated) => {
+                    let update = TranslateUpdate {
+                        sequence_id: seq,
+                        original_text: task.text.clone(),
+                        translated_text: translated,
+                        source_lang, target_lang: effective_target, is_partial: false,
+                    };
+                    if let Err(e) = app.emit("translate-update", &update) {
+                        log::warn!("Custom translation event failed: {}", e);
+                    }
+                }
+                Err(e) => log::warn!("Custom translation failed for seq={}: {}", seq, e),
+            }
+            continue;
+        }
         let result = tokio::task::spawn_blocking(move || {
             if engine_kind == "hymt2" {
                 // Hy-MT2 LLM 引擎：走 llama-helper sidecar，ASR 模式指令；
