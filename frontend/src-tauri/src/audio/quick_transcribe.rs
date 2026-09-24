@@ -85,9 +85,13 @@ pub async fn quick_transcribe<R: Runtime>(
 
     // Step 3: Select and initialize transcription provider based on model
     let model_name = model.as_deref().unwrap_or("sense-voice");
-    let provider = get_or_init_provider(model_name)
-        .await
-        .map_err(|e| e.to_string())?;
+    let provider: Arc<dyn TranscriptionProvider> =
+        if let Some(id) = model_name.strip_prefix("custom:") {
+            let profile = crate::custom_local::profile(&app, id, "asr").await?;
+            Arc::new(crate::audio::transcription::custom_local_provider::CustomLocalAsrProvider::new(profile))
+        } else {
+            get_or_init_provider(model_name).await.map_err(|e| e.to_string())?
+        };
 
     // Step 4: Transcribe
     if model_name.starts_with("x-asr-") {
