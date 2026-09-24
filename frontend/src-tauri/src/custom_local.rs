@@ -108,6 +108,14 @@ pub async fn custom_local_upsert(
 pub async fn custom_local_delete(state: tauri::State<'_, AppState>, id: String) -> Result<(), String> {
     let pool = state.db_manager.pool();
     let mut items = read_profiles(pool).await?;
+    // Do not leave a selected engine pointing at a deleted profile.
+    let asr = SettingsRepository::get(pool, "transcript.model").await.map_err(|e| e.to_string())?;
+    let provider = SettingsRepository::get(pool, "transcript.provider").await.map_err(|e| e.to_string())?;
+    let translation = SettingsRepository::get(pool, "translation.engine").await.map_err(|e| e.to_string())?;
+    if (provider.as_deref() == Some("custom-local") && asr.as_deref() == Some(id.as_str()))
+        || translation.as_deref() == Some(format!("custom:{id}").as_str()) {
+        return Err("Switch back to a built-in model before deleting the active profile".into());
+    }
     items.retain(|p| p.id != id);
     let serialized = serde_json::to_string(&items).map_err(|e| e.to_string())?;
     SettingsRepository::set(pool, PROFILES_KEY, &serialized).await.map_err(|e| e.to_string())
@@ -140,8 +148,13 @@ pub async fn custom_local_test(profile: LocalModelProfile) -> Result<String, Str
     let c = client(profile.timeout_secs.min(15))?;
     let url = format!("{}/models", validate_endpoint(&profile.endpoint)?);
     let r = c.get(&url).send().await.map_err(|e| e.to_string())?;
-    if !r.status().is_success() { return Err(format!("GET /models returned HTTP {}", r.status())); }
-    Ok("Local model endpoint responded successfully".into())
+    if r.status().is_success() {
+        return Ok("Local model endpoint responded successfully".into());
+    }
+    if r.status() == reqwest::StatusCode::NOT_FOUND || r.status() == reqwest::StatusCode::METHOD_NOT_ALLOWED {
+        return Ok("Server is reachable; /models is not implemented. Verify inference separately.".into());
+    }
+    Err(format!("GET /models returned HTTP {}", r.status()))
 }
 
 /// Little-endian, 16 kHz mono PCM WAV; the TranscriptionProvider contract supplies f32.
