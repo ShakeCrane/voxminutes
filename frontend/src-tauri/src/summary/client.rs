@@ -46,12 +46,15 @@ fn base_url(config: &SummaryApiConfig) -> String {
     config.endpoint.trim_end_matches('/').to_string()
 }
 
-fn http_client(total_timeout: Option<std::time::Duration>) -> Result<reqwest::Client, String> {
+fn http_client(total_timeout: Option<std::time::Duration>, config: &SummaryApiConfig) -> Result<reqwest::Client, String> {
     let mut builder =
         reqwest::Client::builder().connect_timeout(std::time::Duration::from_secs(15))
             .redirect(reqwest::redirect::Policy::none());
     if let Some(t) = total_timeout {
         builder = builder.timeout(t);
+    }
+    if crate::custom_local::validate_endpoint(&config.endpoint).is_ok() {
+        builder = builder.no_proxy();
     }
     builder.build().map_err(|e| e.to_string())
 }
@@ -88,7 +91,7 @@ async fn fetch_models(config: &SummaryApiConfig) -> Result<Vec<String>, String> 
     } else {
         format!("{}/models", base_url(config))
     };
-    let client = http_client(Some(std::time::Duration::from_secs(15)))?;
+    let client = http_client(Some(std::time::Duration::from_secs(15)), config)?;
     let response = apply_auth(client.get(&url), config)
         .send()
         .await
@@ -213,7 +216,7 @@ async fn stream_completion<F: FnMut(String)>(
     };
 
     // No total timeout: generation streams may legitimately run for minutes.
-    let client = http_client(None)?;
+    let client = http_client(None, config)?;
     let response = apply_auth(client.post(&url), config)
         .json(&body)
         .send()
