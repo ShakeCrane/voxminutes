@@ -13,6 +13,7 @@ use log::error;
 use crate::audio::capture::AudioCaptureBackend;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(default)]
 pub struct RecordingPreferences {
     #[serde(rename = "recordingsFolder")]
     pub save_folder: PathBuf,
@@ -58,6 +59,9 @@ pub fn ensure_recordings_directory(path: &PathBuf) -> Result<()> {
     if !path.exists() {
         std::fs::create_dir_all(path)?;
         info!("Created recordings directory: {:?}", path);
+    }
+    if !path.is_dir() {
+        return Err(anyhow::anyhow!("Recordings path is not a directory: {}", path.display()));
     }
     Ok(())
 }
@@ -124,6 +128,12 @@ pub async fn save_recording_preferences<R: Runtime>(
           preferences.save_folder, preferences.auto_save, preferences.file_format,
           preferences.preferred_mic_device, preferences.preferred_system_device);
 
+    // Validate before persisting, so the UI never reports a successful but unusable path.
+    if !preferences.save_folder.is_absolute() {
+        return Err(anyhow::anyhow!("Recordings folder must be an absolute path"));
+    }
+    ensure_recordings_directory(&preferences.save_folder)?;
+
     // Get or create store
     let store = app
         .store("recording_preferences.json")
@@ -151,9 +161,6 @@ pub async fn save_recording_preferences<R: Runtime>(
             crate::audio::capture::set_current_backend(backend);
         }
     }
-
-    // Ensure the directory exists
-    ensure_recordings_directory(&preferences.save_folder)?;
 
     Ok(())
 }
