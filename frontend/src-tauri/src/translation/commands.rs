@@ -30,7 +30,8 @@ pub async fn translate_text(
         return Ok(String::new());
     }
 
-    if let Some(id) = current_engine().strip_prefix("custom:") {
+    let selected_engine = current_engine();
+    if let Some(id) = selected_engine.strip_prefix("custom:") {
         let profile = crate::custom_local::profile(&app, id, "translation").await?;
         let explicit = llm::parse_direction(&direction);
         let src = explicit.map(|(s, _)| s.to_string())
