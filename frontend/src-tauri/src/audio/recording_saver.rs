@@ -144,7 +144,7 @@ impl RecordingSaver {
     ///
     /// # Arguments
     /// * `auto_save` - If true, creates checkpoints and enables saving. If false, audio chunks are discarded.
-    pub fn start_accumulation(&mut self, auto_save: bool) -> mpsc::UnboundedSender<AudioChunk> {
+    pub fn start_accumulation(&mut self, auto_save: bool) -> Result<mpsc::UnboundedSender<AudioChunk>> {
         if auto_save {
             info!("Initializing incremental audio saver for recording (auto-save ENABLED)");
         } else {
@@ -155,28 +155,13 @@ impl RecordingSaver {
         let (sender, receiver) = mpsc::unbounded_channel::<AudioChunk>();
         self.chunk_receiver = Some(receiver);
 
-        // Initialize meeting folder and incremental saver ONLY if auto_save is enabled
-        if auto_save {
-            if let Some(name) = self.meeting_name.clone() {
-                match self.initialize_meeting_folder(&name, true) {
-                    Ok(()) => info!("Successfully initialized meeting folder with checkpoints"),
-                    Err(e) => {
-                        error!("Failed to initialize meeting folder: {}", e);
-                        // Continue anyway - will use fallback flat structure
-                    }
-                }
-            }
+        // Do not start an apparently successful session when the selected folder is
+        // unwritable or the incremental audio saver could not be initialized.
+        if let Some(name) = self.meeting_name.clone() {
+            self.initialize_meeting_folder(&name, auto_save)?;
+            info!("Initialized meeting folder for recording: {}", name);
         } else {
-            // When auto_save is false, still create meeting folder for transcripts/metadata
-            // but skip .checkpoints directory
-            if let Some(name) = self.meeting_name.clone() {
-                match self.initialize_meeting_folder(&name, false) {
-                    Ok(()) => info!("Successfully initialized meeting folder (transcripts only)"),
-                    Err(e) => {
-                        error!("Failed to initialize meeting folder: {}", e);
-                    }
-                }
-            }
+            return Err(anyhow::anyhow!("Meeting name must be set before recording starts"));
         }
 
         // Start accumulation task
@@ -226,7 +211,7 @@ impl RecordingSaver {
             *is_saving = true;
         }
 
-        sender
+        Ok(sender)
     }
 
     /// Initialize meeting folder structure and metadata
